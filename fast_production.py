@@ -241,26 +241,26 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 			hits["Z"]  = Z * maps.t_evol.dv.mean()
 			
 	
-	###########################
-	####### APPEND DATA #######
-	###########################
-	# Event Info
-	EI["event"] = event_time[0]
-	EI["time"]  = event_time[1]
-	EI.append()
-	
-	## Z, DZ, E, Q, Ec
-	Z, E, Q, Ec = hits["Z"], hits["E"], hits["Q"], hits["Ec"]
-	Ec[ np.isnan(Ec) ] = 0
-	
-	_Z .append( np.sum( Ec * Z) / np.sum(Ec) )
-	_DZ.append( np.max(Z) - np.min(Z) )
-	_E .append( np.sum(E)  )
-	_Q .append( np.sum(Q)  )
-	_Ec.append( np.sum(Ec) )
-	
-	# close RWF file
-	RWFs_file.close()
+			###########################
+			####### APPEND DATA #######
+			###########################
+			# Event Info
+			EI["event"] = event_time[0]
+			EI["time"]  = event_time[1]
+			EI.append()
+			
+			## Z, DZ, E, Q, Ec
+			Z, E, Q, Ec = hits["Z"], hits["E"], hits["Q"], hits["Ec"]
+			Ec[ np.isnan(Ec) ] = 0
+			
+			_Z .append( np.sum( Ec * Z) / np.sum(Ec) )
+			_DZ.append( np.max(Z) - np.min(Z) )
+			_E .append( np.sum(E)  )
+			_Q .append( np.sum(Q)  )
+			_Ec.append( np.sum(Ec) )
+			
+		# close RWF file
+		RWFs_file.close()
 	
 	h5file.root.Summary.Z .append( _Z  )
 	h5file.root.Summary.DZ.append( _DZ )
