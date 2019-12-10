@@ -92,10 +92,10 @@ def get_config_params(config):
 	return s1emin, s1wmin, pmt_ids,\
 	       run, files_in, nfin, file_out, n_baseline,\
 	       n_mau, thr_mau, thr_csum_s1, thr_csum_s2, sipm_thr,\
-           s1_tmin, s1_tmax, s1_stride, s1_lmin, s1_lmax, s1_rebin_stride,\
-           s2_tmin, s2_tmax, s2_stride, s2_lmin, s2_lmax ,s2_rebin_stride,\
-           thr_sipm_s2, detector_db,\
-           qth_penth, rebin,\
+             s1_tmin, s1_tmax, s1_stride, s1_lmin, s1_lmax, s1_rebin_stride,\
+             s2_tmin, s2_tmax, s2_stride, s2_lmin, s2_lmax ,s2_rebin_stride,\
+             thr_sipm_s2, detector_db,\
+             qth_penth, rebin,\
 	       qth_esmer,  map_file, apply_temp
 
 
@@ -175,9 +175,9 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 			
 			s1_selected_splits,\
 			s2_selected_splits = utils.signals_selected_splits(s1_indices, s2_indices,
-															   s1_stride , s2_stride ,
-															   s1_tmin   , s1_tmax   , s1_lmin, s1_lmax,
-															   s2_tmin   , s2_tmax   , s2_lmin, s2_lmax)
+											   s1_stride , s2_stride ,
+										         s1_tmin   , s1_tmax   , s1_lmin, s1_lmax,
+										         s2_tmin   , s2_tmax   , s2_lmin, s2_lmax)
 			
 			######## 1S1 1S2 CUT ##########
 			S1_time = utils._1s1_1s2(pmt_ccwfs, s2_selected_splits, s1_selected_splits,
@@ -208,17 +208,17 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 			
 			########## Rebin ############
 			_,     _, s2_sipms = rebin_times_and_waveforms(times, rebinned_widths, s2_sipms,
-                                        			rebin_stride=rebin, slices=None)
+                                        			           rebin_stride=rebin, slices=None)
 			times, _, s2_pmts  = rebin_times_and_waveforms(times, rebinned_widths, s2_pmts,
-                                        			rebin_stride=rebin, slices=None)
+                                        			           rebin_stride=rebin, slices=None)
 			######### Charge cut #########
 			s2_pmts_penth  = np.copy( s2_pmts )
 			s2_sipms_penth = np.where(s2_sipms >= qth_penth, s2_sipms, 0)
 			
 			###### create penthesilea hits ########
 			hits = utils.create_penthesilea_hits(s2_pmts_penth, s2_sipms_penth,
-												 sipm_xs      , sipm_ys       , sipm_ids,
-												 times        , S1_time)
+							             sipm_xs      , sipm_ys       , sipm_ids,
+									 times        , S1_time)
 			
 			
 			################################
@@ -276,22 +276,3 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 if __name__ == "__main__":
 	config = configure(sys.argv).as_namespace
 	fast_prod(*get_config_params(config))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
