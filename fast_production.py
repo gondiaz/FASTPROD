@@ -159,10 +159,6 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 			pmt_cwfs    = rwf_to_cwf    (pmt_rwfs)
 			cwf_to_ccwf = calibrate_pmts(detector_db, run, n_mau, thr_mau)
 			pmt_ccwfs, ccwfs_mau, cwf_sum, cwf_sum_mau  = cwf_to_ccwf(pmt_cwfs)
-			#select pmt_ids wfs
-			c = np.zeros(pmt_ccwfs.shape[0])
-			c[pmt_ids] = 1
-			pmt_ccwfs  = np.multiply( c, pmt_ccwfs.T ).T
 			
 			#sipm processing
 			sipm_rwf_to_cal = calibrate_sipms(detector_db, run, sipm_thr)
@@ -199,8 +195,12 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 			s2_pmts  = np.float32( s2_pmts )
 			s2_sipms = np.float32( s2_sipms)
 			times    = np.float32( times   )
-			
-			
+			#select pmt_ids wfs
+			c = np.zeros(s2_pmts.shape[0])
+			c[pmt_ids] = 1
+			s2_pmts  = np.multiply( c, s2_pmts.T ).T
+
+
 			################################
 			######## PENTHESILEA ###########
 			################################
