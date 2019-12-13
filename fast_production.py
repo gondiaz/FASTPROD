@@ -243,22 +243,22 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 			
 			slides = np.unique( hits["Z"] )
 			for slide in slides:
-    			sel = (hits["Z"]==slide)
-    			slide_hits = hits[sel]
-    			
-    			q = slide_hits["Qc"]
-    			e = slide_hits["E"]
-    			slide_e = e[0]     ## OJO AQUÍ
-			
-    			if np.sum( q ) == 0:
-        			idxs = np.argwhere(sel).flatten()
-        			hits = np.delete(hits, idxs)
-        			hits = np.insert(hits, 0, (0, 0, slide,
-                                   			slide_e, NN,
-                                   			NN, NN))
-    			else:
-        			hits["E"][sel] = slide_e * q / np.sum(q)
-        		
+    				sel = (hits["Z"]==slide)
+    				slide_hits = hits[sel]
+    				
+    				q = slide_hits["Qc"]
+    				e = slide_hits["E"]
+    				slide_e = e[0]     ## OJO AQUÍ
+				
+    				if np.sum( q ) == 0:
+        				idxs = np.argwhere(sel).flatten()
+        				hits = np.delete(hits, idxs)
+        				hits = np.insert(hits, 0, (0, 0, slide,
+                                   				slide_e, NN,
+                                   				NN, NN))
+    				else:
+        				hits["E"][sel] = slide_e * q / np.sum(q)
+        			
 			sel = (hits["Qc"]==0)
 			hits = np.delete( hits, np.argwhere(sel))
 			hits = np.sort(hits, order="Z")
