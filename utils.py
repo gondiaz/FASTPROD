@@ -62,35 +62,38 @@ def _1s1_1s2(pmt_ccwfs, s2_selected_splits, s1_selected_splits,
 def create_penthesilea_hits(s2_pmts_penth, s2_sipms_penth,
                             sipm_xs      , sipm_ys       , sipm_ids,
                             times        , S1_time):
-    ###### create penthesilea hits ########
-    n_sipms = len(sipm_ids)
-    X, Y = sipm_xs[sipm_ids], sipm_ys[sipm_ids]
-    T = (times - S1_time)/1000
-
-    E_per_slice = np.sum( s2_pmts_penth, axis=0)
-    hits    = []
-    nn_hits = []
-    for t, e, q in zip(T, E_per_slice, s2_sipms_penth.T):
-        if np.sum(q)==0:
-            nn_hits.append( (0, 0, t, e, NN, -1) )
-        else:
-            E = e * q / np.sum(q)
-            hits.append( (X, Y, np.full( n_sipms, t), E, q, np.full( n_sipms, -1) ) )
-    hits = np.array( hits )
-    hits = np.swapaxes(hits, axis1=1, axis2=2)
-    hits = np.concatenate( hits )
-    H = np.array(np.zeros(np.shape(hits)[0]), 
-                 dtype=[("X", int)  , ("Y", int)  , ("Z", float), 
-                        ("E", float), ("Q", float), ("Ec",float)])
-    H["X"], H["Y"], H["Z"]  = hits[:, 0], hits[:, 1], hits[:, 2]
-    H["E"], H["Q"], H["Ec"] = hits[:, 3], hits[:, 4], -1
-    
-    #### remove 0 charge hits and insert NN ####
-    sel = ~(H["Q"]==0)
-    H = np.insert( H[sel], 0, nn_hits)
-    H = np.sort( H, order="Z")
-
-    return H
+    	###### create penthesilea hits ########
+	datasipm = load_db.DataSiPM("new", run)
+	sipm_xs  = datasipm.X.values
+	sipm_ys  = datasipm.Y.values
+	n_sipms = len(sipm_ids)
+	
+	X, Y = sipm_xs[sipm_ids], sipm_ys[sipm_ids]
+	T = (times - S1_time)/1000
+	
+	E_per_slice = np.sum( s2_pmts_penth, axis=0)
+	hits = []
+	for t, e, q in zip(T, E_per_slice, s2_sipms_penth.T):
+		hits.append( (X, Y, np.full( n_sipms, t),
+			      np.full(n_sipms, e), np.full( n_sipms, -1),
+			      q                  , np.full( n_sipms, -1) ) )
+		
+	hits = np.array( hits )
+	hits = np.swapaxes(hits, axis1=1, axis2=2)
+	hits = np.concatenate( hits )
+	
+	H = np.array(np.zeros(np.shape(hits)[0]),
+		    dtype=[("X", int)  , ("Y", int)  , ("Z", float),
+			   ("E", float), ("Ec",float),
+			   ("Q", float), ("Qc", float)])
+	H["X"], H["Y"], H["Z"] = hits[:, 0], hits[:, 1], hits[:, 2]
+	H["E"], H["Ec"] = hits[:, 3], -1                            #OJO, la energía del hit es la energia de la slice
+	H["Q"], H["Qc"] = hits[:, 5], -1
+	
+	#remove 0 charge hits
+	sel = ~(H["Q"]==0)
+	hits = H[sel]
+    	return hits
 
 
 def esmeralda_charge_cut(hits, qth_esmer):
@@ -117,21 +120,25 @@ def esmeralda_charge_cut(hits, qth_esmer):
 
 
 def join_NN_hits(hits):
-    
-    ###### join NN hits ######
-    sel = (hits["Q"]==NN)
-    nn_hits = hits[ sel]
-    hits    = hits[~sel]
-    slides = np.unique( hits["Z"] )
-    for nn_hit in nn_hits:
-        #select slide to append
-        d = np.abs( slides - nn_hit["Z"] ) 
-        slide = slides[ np.argmin( d ) ]
-        slide_hits = hits[hits["Z"]==slide]
-        #new energy 
-        new_E = np.sum(slide_hits["E"]) + nn_hit["E"]
-        q = hits[hits["Z"]==slide]["Q"]
-        Q = np.sum( q )
-        hits["E"][hits["Z"] == slide] = new_E * q / Q
-    
-    return hits
+	# JOIN NN hits
+	sel = (hits["Q"]==NN)
+	
+	nn_hits = hits[ sel]
+	hits    = hits[~sel]
+	
+	slides = np.unique( hits["Z"] )
+	for nn_hit in nn_hits:
+		#select slide to append
+		d = np.abs( slides - nn_hit["Z"] ) 
+		slide = slides[ np.argmin( d ) ]
+		slide_hits = hits[hits["Z"]==slide]
+		
+		#new energy
+		new_E = np.sum(slide_hits["E"]) + nn_hit["E"]
+		
+		q = hits[hits["Z"]==slide]["Q"]
+		Q = np.sum( q )
+		
+		hits["E"][hits["Z"] == slide] = new_E * q / Q
+
+	return hits

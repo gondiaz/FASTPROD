@@ -38,6 +38,10 @@ from invisible_cities.reco.corrections_new import read_maps
 from invisible_cities.reco.corrections_new import apply_all_correction
 from invisible_cities.reco.corrections_new import norm_strategy
 
+# LT CORRECTIONS
+from invisible_cities.reco.corrections_new import correct_lifetime_
+from invisible_cities.reco.corrections_new import maps_coefficient_getter
+
 # UTILS
 import utils
 
@@ -82,7 +86,7 @@ def get_config_params(config):
 	rebin     = config.rebin
 	
 	#Esmeralda
-	qth_esmer  = config.qth_esmer
+	qth_esmer  = config.qth_esmer  #NOT USED
 	map_file   = config.map_file
 	apply_temp = config.apply_temp
 	
@@ -112,11 +116,12 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 	h5file = tb.open_file(file_out, mode="w", title="Fast Prod")
 
 	group = h5file.create_group("/", "Summary", "Summary")
-	h5file.create_earray(group, "Z" , tb.Float64Atom(), shape=(0, ))
+	h5file.create_earray(group, "Zmin", tb.Float64Atom(), shape=(0, ))
+	h5file.create_earray(group, "Zmax", tb.Float64Atom(), shape=(0, ))
 	h5file.create_earray(group, "DZ", tb.Float64Atom(), shape=(0, ))
 	h5file.create_earray(group, "E" , tb.Float64Atom(), shape=(0, ))
 	h5file.create_earray(group, "Q" , tb.Float64Atom(), shape=(0, ))
-	h5file.create_earray(group, "Ec", tb.Float64Atom(), shape=(0, ))
+	h5file.create_earray(group, "Qc", tb.Float64Atom(), shape=(0, ))
 	group  = h5file.create_group("/", f"Event_Info", "Info")
 	class Event_Info(tb.IsDescription):
 		event = tb.Int32Col ()
@@ -133,12 +138,15 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 	sipm_xs  = datasipm.X.values
 	sipm_ys  = datasipm.Y.values
 	
-	maps = read_maps( map_file )
-	total_correction = apply_all_correction(maps, apply_temp=apply_temp,
-                                        	norm_strat=norm_strategy.kr)
-
+	qmaps = read_maps( qmap_file )
+	get_lt_corr_fun = maps_coefficient_getter(qmaps.mapinfo, qmaps.lt)
+	if apply_temp:
+		raise Exception("Apply temp is False")
+	else:
+		ltevol_vs_t = lambda x : np.ones_like(x)
+	
 	# FAST PROD
-	_Z, _DZ, _E, _Q, _Ec = [], [], [], [], []
+	_Zmin, _Zmax, _DZ, _E, _Q, _Qc = [], [], [], [], []
 	for file in files_in:
 
 		print(file)
@@ -200,7 +208,6 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 			c[pmt_ids] = 1
 			s2_pmts  = np.multiply( c, s2_pmts.T ).T
 
-
 			################################
 			######## PENTHESILEA ###########
 			################################
@@ -210,35 +217,55 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
                                         			       rebin_stride=rebin, slices=None)
 			times, _, s2_pmts  = rebin_times_and_waveforms(times, rebinned_widths, s2_pmts,
                                         			       rebin_stride=rebin, slices=None)
-			######### Charge cut #########
 			s2_pmts_penth  = np.copy( s2_pmts )
-			s2_sipms_penth = np.where(s2_sipms >= qth_penth, s2_sipms, 0)
+			s2_sipms_penth = np.copy( s2_sipms )
 			
 			###### create penthesilea hits ########
 			hits = utils.create_penthesilea_hits(s2_pmts_penth, s2_sipms_penth,
 							     sipm_xs      , sipm_ys       , sipm_ids,
 							     times        , S1_time)
-			
-			
-			################################
-			######### ESMERALDA ############
-			################################
-			
-			#### Charge cut ####
-			hits = utils.esmeralda_charge_cut(hits, qth_esmer)
-			
-			###### join NN hits ######
-			hits = utils.join_NN_hits(hits)
-			
-			#### Corrections ######
+
+			######## correct penthesilea charge ########
 			X, Y, Z = hits["X"], hits["Y"], hits["Z"]
-			E, Q    = hits["E"], hits["Q"]
+			Q = hits["Q"]
 			T = np.full(len(hits), event_time[-1]/1000)
-			correction_factor = total_correction(X, Y, Z, T)
-			Ec = correction_factor * E
-			hits["Ec"] = Ec
-			hits["Z"]  = Z * maps.t_evol.dv.mean()
+
+			lt_factor  = correct_lifetime_(Z, get_lt_corr_fun(X, Y) * ltevol_vs_t(T))
+			Qc = lt_factor * Q
+
+			hits["Qc"] = Qc
+
+			######### penthesilea charge cut ##########
+			qth = qth_penth
 			
+			sel = (hits["Qc"]>=qth)
+			hits["Qc"][~sel] = 0
+			
+			slides = np.unique( hits["Z"] )
+			for slide in slides:
+    			sel = (hits["Z"]==slide)
+    			slide_hits = hits[sel]
+    			
+    			q = slide_hits["Qc"]
+    			e = slide_hits["E"]
+    			slide_e = e[0]     ## OJO AQUÍ
+			
+    			if np.sum( q ) == 0:
+        			idxs = np.argwhere(sel).flatten()
+        			hits = np.delete(hits, idxs)
+        			hits = np.insert(hits, 0, (0, 0, slide,
+                                   			slide_e, NN,
+                                   			NN, NN))
+    			else:
+        			hits["E"][sel] = slide_e * q / np.sum(q)
+        		
+			sel = (hits["Qc"]==0)
+			hits = np.delete( hits, np.argwhere(sel))
+			hits = np.sort(hits, order="Z")
+
+			###### join NN hits ###
+			hits = utils.join_NN_hits( hits )
+
 
 			###########################
 			####### APPEND DATA #######
@@ -249,14 +276,15 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 			EI.append()
 			
 			## Z, DZ, E, Q, Ec
-			Z, E, Q, Ec = hits["Z"], hits["E"], hits["Q"], hits["Ec"]
-			Ec[ np.isnan(Ec) ] = 0
+			Z, E, Q, Qc = hits["Z"], hits["E"], hits["Q"], hits["Qc"]
+			Qc[ np.isnan(Qc) ] = 0
 			
-			_Z .append( np.sum( Ec * Z) / np.sum(Ec) )
+			_Zmax.append( np.max(Z) )
+			_Zmin.append( np.min(Z) )
 			_DZ.append( np.max(Z) - np.min(Z) )
 			_E .append( np.sum(E)  )
 			_Q .append( np.sum(Q)  )
-			_Ec.append( np.sum(Ec) )
+			_Qc.append( np.sum(Qc) )
 			
 		# close RWF file
 		RWFs_file.close()
