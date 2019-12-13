@@ -63,11 +63,7 @@ def create_penthesilea_hits(s2_pmts_penth, s2_sipms_penth,
                             sipm_xs      , sipm_ys       , sipm_ids,
                             times        , S1_time):
     	###### create penthesilea hits ########
-	datasipm = load_db.DataSiPM("new", run)
-	sipm_xs  = datasipm.X.values
-	sipm_ys  = datasipm.Y.values
 	n_sipms = len(sipm_ids)
-	
 	X, Y = sipm_xs[sipm_ids], sipm_ys[sipm_ids]
 	T = (times - S1_time)/1000
 	
@@ -93,7 +89,8 @@ def create_penthesilea_hits(s2_pmts_penth, s2_sipms_penth,
 	#remove 0 charge hits
 	sel = ~(H["Q"]==0)
 	hits = H[sel]
-    	return hits
+
+	return hits
 
 
 def esmeralda_charge_cut(hits, qth_esmer):
@@ -140,5 +137,4 @@ def join_NN_hits(hits):
 		Q = np.sum( q )
 		
 		hits["E"][hits["Z"] == slide] = new_E * q / Q
-
 	return hits

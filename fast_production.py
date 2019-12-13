@@ -138,7 +138,7 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 	sipm_xs  = datasipm.X.values
 	sipm_ys  = datasipm.Y.values
 	
-	qmaps = read_maps( qmap_file )
+	qmaps = read_maps( map_file )
 	get_lt_corr_fun = maps_coefficient_getter(qmaps.mapinfo, qmaps.lt)
 	if apply_temp:
 		raise Exception("Apply temp is False")
@@ -146,7 +146,7 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 		ltevol_vs_t = lambda x : np.ones_like(x)
 	
 	# FAST PROD
-	_Zmin, _Zmax, _DZ, _E, _Q, _Qc = [], [], [], [], []
+	_Zmin, _Zmax, _DZ, _E, _Q, _Qc = [], [], [], [], [], []
 	for file in files_in:
 
 		print(file)
@@ -289,11 +289,12 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 		# close RWF file
 		RWFs_file.close()
 	
-	h5file.root.Summary.Z .append( _Z  )
+	h5file.root.Summary.Zmax.append( _Zmax )
+	h5file.root.Summary.Zmin.append( _Zmin )
 	h5file.root.Summary.DZ.append( _DZ )
 	h5file.root.Summary.E .append( _E  )
 	h5file.root.Summary.Q .append( _Q  )
-	h5file.root.Summary.Ec.append( _Ec )
+	h5file.root.Summary.Qc.append( _Qc )
 	
 	#write to disk
 	h5file.flush()
