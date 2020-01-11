@@ -102,6 +102,21 @@ def get_config_params(config):
 	       qth_penth, rebin,\
 	       qth_esmer,  map_file, apply_temp
 
+######### PES TO PHOTONS #########
+params = np.array( [ 6.58477685e-22,  1.50455111e-17, -2.74129372e-14,  2.03138072e-11,
+                    -7.13216271e-09,  1.83113819e-06,  4.85324372e-05,  1.00393735e+00,
+                    -1.89564238e-02] )
+params = np.flip(params)
+def pes_to_photons(Npes):
+	#polynomial correction
+	exp = np.array( [Npes**i for i in range(0, 9)] )
+	Nph = np.sum( np.multiply(params, exp.T).T, axis=0)
+	#identity correction
+	sel = Npes<50
+	Nph[sel] = Npes[sel]
+	return Nph
+
+
 
 def fast_prod(s1emin, s1wmin, pmt_ids,\
               run, files_in, nfin, file_out, n_baseline,\
@@ -197,6 +212,7 @@ def fast_prod(s1emin, s1wmin, pmt_ids,\
 									       pad_zeros    = True)
 			#select and thr_sipm_s2
 			s2_sipms = sipm_cwfs[:, s2_selected_splits[0][0] //40 : s2_selected_splits[0][-1]//40 + 1]
+			s2_sipms = pes_to_photons( s2_sipms )
 			sipm_ids, s2_sipms = select_wfs_above_time_integrated_thr(s2_sipms, thr_sipm_s2)
 			
 			######## IRENE FINAL S2 WFS #######
